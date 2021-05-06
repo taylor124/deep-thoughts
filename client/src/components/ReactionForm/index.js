@@ -1,35 +1,32 @@
 import React, { useState } from 'react';
 import { useMutation } from '@apollo/react-hooks';
-import { ADD_THOUGHT } from '../../utils/mutations';
+import { ADD_REACTION } from '../../utils/mutations';
 import { QUERY_THOUGHTS, QUERY_ME } from '../../utils/queries';
 
-const ThoughtForm = () => {
-    const [addThought, { error }] = useMutation(ADD_THOUGHT, {
-        update(cache, { data: { addThought } }) {
+const ReactionForm = ({ thoughtId }) => {
+    const [addReaction, { error }] = useMutation(ADD_REACTION, {
+        update(cache, { data: { addReaction } }) {
             try {
-                // could potentially not exist yet, so wrap in a try...catch
-                const { thoughts } = cache.readQuery({ query: QUERY_THOUGHTS });
+                const { reactions } = cache.readQuery({ query: QUERY_THOUGHTS });
                 cache.writeQuery({
                     query: QUERY_THOUGHTS,
-                    data: { thoughts: [addThought, ...thoughts] }
+                    data: { reactions: [addReaction, ...reactions] }
                 });
             } catch (e) {
                 console.error(e);
             }
-
-            // update me object's cache, appending new thought to the end of the array
             const { me } = cache.readQuery({ query: QUERY_ME });
             cache.writeQuery({
                 query: QUERY_ME,
-                data: { me: { ...me, thoughts: [...me.thoughts, addThought] } }
+                data: { me: { ...me, reactions: [...me.reactions, addReaction] } }
             });
         }
     });
-    const [thoughtText, setText] = useState('');
+    const [reactionBody, setBody] = useState('');
     const [characterCount, setCharacterCount] = useState(0);
     const handleChange = event => {
         if (event.target.value.length <= 280) {
-            setText(event.target.value);
+            setBody(event.target.value);
             setCharacterCount(event.target.value.length);
         }
     };
@@ -38,12 +35,12 @@ const ThoughtForm = () => {
 
         try {
             // add thought to database
-            await addThought({
-                variables: { thoughtText }
+            await addReaction({
+                variables: { reactionBody, thoughtId }
             });
 
             // clear form value
-            setText('');
+            setBody('');
             setCharacterCount(0);
         } catch (e) {
             console.error(e);
@@ -53,7 +50,7 @@ const ThoughtForm = () => {
         <div>
             <p className={`m-0 ${characterCount === 280 || error ? 'text-error' : ''}`}>
                 Character Count: {characterCount}/280
-  {error && <span className="ml-2">Something went wrong...</span>}
+                {error && <span className="ml-2">Something went wrong...</span>}
             </p>
             <form
                 className="flex-row justify-center justify-space-between-md align-stretch"
@@ -61,16 +58,18 @@ const ThoughtForm = () => {
             >
                 <textarea
                     placeholder="Here's a new thought..."
-                    value={thoughtText}
+                    value={reactionBody}
                     className="form-input col-12 col-md-9"
                     onChange={handleChange}
                 ></textarea>
+
                 <button className="btn col-12 col-md-3" type="submit">
                     Submit
         </button>
             </form>
+
         </div>
     );
 };
 
-export default ThoughtForm;
+export default ReactionForm;
